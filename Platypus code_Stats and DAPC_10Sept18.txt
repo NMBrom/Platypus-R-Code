@@ -1,0 +1,155 @@
+# All below code was carried out in R on the Deakin Cluster
+
+
+# Set up a working directory on the cluster, add the input file/s (use genepop files- rename (mv) to .gen).
+
+# Ensure R programs are installed (use bioinf server- bioinf.it.deakin.edu.au). On cluster ‘R’ try ‘library(“name”).
+
+# If need to install packages ‘install.packages(“name”)), when asked ‘create personal library- Y, choose mirror (Melb).
+
+# Once packages installed in R, quit out of R on cluster using q()
+
+# Create a text file with the commands, save as a .R file to desktop.
+
+# Save the .R file in the working directory on the cluster (using FileZilla), then run the .R file using the command:
+
+nohup R CMD BATCH "filename.R" &
+
+
+* R code Global & Pairwise Fst *
+
+setwd("/home/nmbromle/platypus/POP4_R")
+options(width=120)
+library("adegenet")
+obj<- read.genepop("POP4.snps.gen")
+library("diveRsity")
+diffCalc(infile = "POP4.snps.gen", outfile = "globalfst_pop4", fst = TRUE, pairwise = TRUE, bs_locus = TRUE, bs_pairwise = TRUE, boots = 1000, ci_type = "individuals", alpha = 0.05, para = FALSE)
+
+* R code used to generate N, A, % (from divBasic Table- also can check Ho and He against values from Basic Stats) *
+
+setwd("/home/nmbromle/platypus/POP4_R")
+options(width=120)
+library("diveRsity")
+divBasic(infile = "POP4.snps.gen", outfile = "POP4_diversityOut", gp = 2, bootstraps = 1000,
+         HWEexact = TRUE, mcRep = 2000)
+         
+
+* R code used to generate Allelic Richness, Ho, He, Fis, Fis lo, Fis high (from Basic Stats table) *
+
+setwd("/home/nmbromle/platypus/POP4_R")
+options(width=120)
+library("diveRsity")
+basicStats(infile = "POP4.snps.gen", outfile = "POP4_basicStats",
+           fis_ci = TRUE, ar_ci = TRUE, fis_boots = 999,
+           ar_boots = 999, mc_reps = 9999,
+           rarefaction = FALSE, ar_alpha = 0.05,
+           fis_alpha = 0.05)
+
+-----------------------------------------------------------------------------------------------------------------------------
+# R code carried out in R Studio (desktop)
+
+* DAPC- Find Clusters *
+
+setwd('/Users/Nbromley/Desktop/POP4')
+library("adegenet")
+library("hierfstat")
+di <- read.genepop(file.choose(),ncode = 2L)
+grp <- find.clusters(di, max.n.clust=40)
+# 360 PCs retained
+# BIC graph showed 8 clusters to elbow
+ 
+pop.names <- c("Yarra", "WesternPort", "Yarra Olinda", "Maribyrnong", "Wimmera", "Dandenong", "Werribee") 
+table.value(table(pop(di), grp$grp), col.lab=paste("inf", 1:8), row.lab=pop.names)
+dapc1 <- dapc(di, grp$grp)
+# 200 PCs retained
+# 2 discriminant functions retained
+dapc1$var #(got 82.5%)
+
+# to plot and get legend for FC DAPC with just colours for pops and nothing for clusters
+col8 = c("red", "blue", "darkmagenta", "darkgreen", "cyan", "yellow", "chocolate")
+plot(dapc1$ind.coord[,"LD1"], dapc1$ind.coord[,"LD2"], col=col8[pop(di)], pch=16, xlab="axis1", ylab="axis2")
+legtext.sites<-c("Yarra", "WesternPort", "Yarra Olinda", "Maribyrnong", "Wimmera", "Dandenong", "Werribee")
+legend("topright", c(legtext.sites), col = c(col8), pch = 16, cex=0.5, y.intersp=1) 
+
+# to plot clusters (colours) and populations (symbols)
+cols8 <- rainbow(8)
+legtext.clusters<-c("Cluster1", "Cluster2", "Cluster3", "Cluster4", "Cluster5", "Cluster6", "Cluster7", "Cluster8")
+legtext.sites<-c("Yarra", "WesternPort", "Yarra Olinda", "Maribyrnong", "Wimmera", "Dandenong", "Werribee")
+legend("topright", c(legtext.sites, legtext.clusters), col = c(cols8, rep('black', 7)), pch = c( rep(16,8), 1:8), cex=0.5, y.intersp=1.5) 
+
+# to zoom in on overlapping clusters, use plot command add x and y lim, xlim (min to max on x axis that surround clusters), ylim same
+plot(dapc1$ind.coord[,"LD1"], dapc1$ind.coord[,"LD2"], col=cols8[grp$grp], pch=c(1:7)[pop(di)], xlab="axis1", ylab="axis2", xlim=c(-8,5), ylim=c(-10,2))
+
+
+#to check data coordinates are correctly lined up with populations
+dapc1$ind.coord
+head (dapc1$ind.coord)
+head (dapc1$ind.coord[,"LD1"])
+
+# to check lining up right:
+head(grp$grp)
+#looks like (sample names and cluster/level #;s belong to):
+1269212.1 1269216.1 1269217.1 1269219.1 1269228.1 1269229.1 
+        3         2         7         2         3         3 
+Levels: 1 2 3 4 5 6 7
+
+indNames(di)
+#shows sample names
+
+indNames(di)==row.names(dapc1$ind.coord)
+#shows TRUE if matches up group with pop
+
+head(pop(di))
+#shows first 6 samples (first 6 are all Yarra as Yarra is first pop in data and is 145 samples), and shows the 7 different 'levels' or populations in the data (based on last sample # of popn)
+
+# to get a table of the coordinates of each sample on plot and group (cluster) and population from, to double check against plot points.
+data.combined <- cbind(dapc1$ind.coord, "grp"=grp$grp, "pop"=pop(di))
+
+#to get the data.combined table to print in a text file (saves in workspace) and opens in R window - can use to get all data when reached max print before end of doc
+write.table(data.combined2,file = "data_combined2.txt", quote = FALSE)
+
+* DAPC - Non find clusters *
+
+setwd('/Users/Nbromley/Desktop/POP4')
+library("adegenet")
+library("hierfstat")
+di <- read.genepop(file.choose(),ncode = 2L)
+dapc1 <- dapc(di)
+# 200 PCs retained
+# 2 discriminant functions retained
+dapc1$var #(got 82.5%)
+
+cols7 <- rainbow(7)
+
+dapc1$ind.coord
+head (dapc1$ind.coord)
+head (dapc1$ind.coord[,"LD1"])
+
+#to use symbols for plot
+plot(dapc1$ind.coord[,"LD1"], dapc1$ind.coord[,"LD2"], pch=c(1:7)[pop(di)], xlab="axis1", ylab="axis2")
+
+#to use colours for plot
+plot(dapc1$ind.coord[,"LD1"], dapc1$ind.coord[,"LD2"], col=cols7[pop(di)], xlab="axis1", ylab="axis2")
+
+
+legtext.sites<-c("Yarra", "WesternPort", "Yarra Olinda", "Maribyrnong", "Wimmera", "Dandenong", "Werribee")
+
+#symbols legend
+legend("topright", c(legtext.sites), pch = c(1:7), cex=0.5, y.intersp=1.5)
+
+#colours legend
+legend("bottomleft", c(legtext.sites), pch = 1, col=cols7, cex=0.5, y.intersp=1)    
+
+
+#check datapoint from a popn matches with location in plot (use a sample name that you know the population of)
+dapc1$ind.coord["1269227.1",]
+
+#Membership probability graph, run DAPC as usual then:
+compoplot.dapc(dapc1, col8, only.grp = NULL, border = NA)
+
+
+# to add individuals:
+compoplot(dapc1, posi="bottomright",
++                                     txt.leg=paste("pop", 1:7), lab="",
++                                     ncol=2, xlab="individuals", col=col8, cleg=1)
+-----------------------------------------------------------------------------------------------------------------------------
